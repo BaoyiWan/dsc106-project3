@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>Precipitation and Cropland Patterns</title>
+
+  <link rel="stylesheet" href="style.css" />
+
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+</head>
+
+<body>
+  <main>
+    <section class="intro">
+      <h1>Precipitation and Cropland Patterns Across the United States</h1>
+
+      <p>
+        This interactive visualization explores how precipitation patterns overlap with
+        cropland density across the United States. The values are visual proxies extracted
+        from NASA GIBS image layers, so they should be interpreted as approximate visual
+        intensity values rather than exact physical measurements. The precipitation layer
+        represents a selected daily snapshot, not a long-term climate average.
+      </p>
+    </section>
+
+    <section class="finding-card">
+      <h2>Main Finding</h2>
+      <p>
+        The visualization suggests that intense cropland areas have a higher average
+        precipitation proxy than sparse cropland and non-agricultural areas. However,
+        the scatterplot also shows a weak and noisy relationship at the pixel level,
+        so precipitation alone does not explain cropland density.
+      </p>
+    </section>
+
+    <section class="controls">
+      <div class="control-group">
+        <label for="measure-select">Precipitation measure:</label>
+        <select id="measure-select">
+          <option value="precip_intensity">Overall Precipitation Proxy</option>
+          <option value="rain_proxy">Rain Proxy</option>
+          <option value="snow_proxy">Snow Proxy</option>
+        </select>
+      </div>
+
+      <div class="control-group">
+        <label for="zone-select">Crop zone:</label>
+        <select id="zone-select">
+          <option value="All">All</option>
+          <option value="Non-Agricultural">Non-Agricultural</option>
+          <option value="Sparse Crops">Sparse Crops</option>
+          <option value="Intense Cropland">Intense Cropland</option>
+        </select>
+      </div>
+    </section>
+
+    <section class="charts">
+      <div class="chart-card">
+        <h2>Pixel-Level Relationship</h2>
+        <p class="chart-note">
+          Each point represents a sampled pixel from the map layers. Use the controls to
+          compare different precipitation proxies and crop zones.
+        </p>
+        <div id="scatterplot"></div>
+      </div>
+
+      <div class="chart-card">
+        <h2>Average by Crop Zone</h2>
+        <p class="chart-note">
+          This bar chart summarizes the average selected precipitation proxy for each
+          cropland category.
+        </p>
+        <div id="barchart"></div>
+      </div>
+    </section>
+
+    <section class="writeup">
+      <h2>Write-up</h2>
+
+      <div class="writeup-grid">
+        <div>
+          <h3>Research Question</h3>
+          <p>
+            Our project asks: how do precipitation patterns overlap with cropland density
+            across the United States? Instead of trying to prove that precipitation causes
+            more crops to grow, we focus on the spatial relationship between cropland
+            distribution and precipitation intensity.
+          </p>
+        </div>
+
+        <div>
+          <h3>Data and Transformation</h3>
+          <p>
+            We used NASA GIBS image layers for cropland distribution and precipitation
+            rate. Since these layers are image-based, we extracted color intensity values
+            from the pixels and used them as visual proxies. The green channel from the
+            cropland layer was used as an approximate cropland-density proxy, while the
+            RGB intensity from the precipitation layer was used as an approximate
+            precipitation proxy. We then sampled the pixel-level data to keep the D3
+            visualization fast in the browser.
+          </p>
+        </div>
+
+        <div>
+          <h3>Visual Encoding</h3>
+          <p>
+            The scatterplot uses the x-axis to represent the selected precipitation proxy
+            and the y-axis to represent cropland density. Color represents the crop-zone
+            category: non-agricultural, sparse crops, or intense cropland. The bar chart
+            summarizes the average selected precipitation proxy for each crop-zone group,
+            making the group-level pattern easier to compare.
+          </p>
+        </div>
+
+        <div>
+          <h3>Interaction Design</h3>
+          <p>
+            The precipitation dropdown lets users switch between overall precipitation,
+            rain proxy, and snow proxy. The crop-zone dropdown lets users filter the view
+            to focus on one land-use category at a time. Hover tooltips reveal the exact
+            proxy values and approximate geographic location for each sampled point.
+          </p>
+        </div>
+
+        <div>
+          <h3>Development Process</h3>
+          <p>
+            Our group first explored the data in Python by creating several static graphs,
+            including an overlay map, scatterplots, and grouped bar charts. After choosing
+            the final research question, we exported cleaned and sampled data into CSV
+            files and rebuilt the visualization in D3. The most time-consuming part was
+            transforming image-based map layers into a format that could be used for an
+            interactive browser visualization.
+          </p>
+
+          <p>
+            For the final implementation, part of the group focused on Python data extraction
+            and exploratory graphs, while another part focused on converting the cleaned data
+            into CSV files and rebuilding the visualization in D3. In total, we spent about
+            8 people-hours on data cleaning, 6 people-hours on exploratory analysis, and
+            8 people-hours on the D3 webpage and interaction design.
+          </p>
+        </div>
+
+        <div>
+          <h3>Limitations</h3>
+          <p>
+            The values in this visualization should be interpreted as approximate visual
+            intensity proxies, not exact physical measurements. The precipitation layer
+            also represents a selected snapshot rather than a long-term climate average.
+            Because of this, our conclusion focuses on visual overlap and association
+            rather than causal impact.
+          </p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div id="tooltip"></div>
+
+  <script src="script.js"></script>
+</body>
+</html>
