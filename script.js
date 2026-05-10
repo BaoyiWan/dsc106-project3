@@ -22,6 +22,8 @@ const tooltip = d3.select("#tooltip");
 let pointsData;
 let summaryData;
 
+let currentMetric = "precip_intensity";
+
 Promise.all([
   d3.csv(pointFile, d => ({
     lon: +d.lon,
@@ -40,19 +42,32 @@ Promise.all([
     avg_snow: +d.avg_snow,
     count: +d.count
   }))
-]).then(([points, summary]) => {
+])
+.then(([points, summary]) => {
+
+  console.log(points);
+  console.log(summary);
+
   pointsData = points;
   summaryData = summary;
 
-  drawScatterplot();
+  drawViolinPlot();
   drawBarChart();
 
-  d3.select("#measure-select").on("change", updateCharts);
-  d3.select("#zone-select").on("change", updateCharts);
+  d3.select("#measure-select")
+    .on("change", function() {
+
+      currentMetric = this.value;
+
+      updateCharts();
+    });
+
+  d3.select("#zone-select")
+    .on("change", updateCharts);
 });
 
 function updateCharts() {
-  drawScatterplot();
+  drawViolinPlot();
   drawBarChart();
 }
 
@@ -74,96 +89,326 @@ function getFilteredPoints() {
   return pointsData.filter(d => d.crop_zone === selectedZone);
 }
 
-function drawScatterplot() {
-  const measure = getCurrentMeasure();
-  const filtered = getFilteredPoints();
+// function drawScatterplot() {
+//   const measure = getCurrentMeasure();
+//   const filtered = getFilteredPoints();
 
-  d3.select("#scatterplot").selectAll("*").remove();
+//   d3.select("#scatterplot").selectAll("*").remove();
 
-  const margin = { top: 40, right: 30, bottom: 70, left: 75 };
-  const outerWidth = 720;
-  const outerHeight = 500;
-  const width = outerWidth - margin.left - margin.right;
-  const height = outerHeight - margin.top - margin.bottom;
+//   const margin = { top: 40, right: 30, bottom: 70, left: 75 };
+//   const outerWidth = 720;
+//   const outerHeight = 500;
+//   const width = outerWidth - margin.left - margin.right;
+//   const height = outerHeight - margin.top - margin.bottom;
 
-  const svg = d3.select("#scatterplot")
-    .append("svg")
-    .attr("viewBox", `0 0 ${outerWidth} ${outerHeight}`);
+//   const svg = d3.select("#scatterplot")
+//     .append("svg")
+//     .attr("viewBox", `0 0 ${outerWidth} ${outerHeight}`);
 
-  const g = svg.append("g")
-    .attr("transform", `translate(${margin.left},${margin.top})`);
+//   const g = svg.append("g")
+//     .attr("transform", `translate(${margin.left},${margin.top})`);
 
-  const xMax = d3.max(pointsData, d => d[measure]) || 1;
+//   const xMax = d3.max(pointsData, d => d[measure]) || 1;
 
-  const x = d3.scaleLinear()
-    .domain([0, xMax])
-    .nice()
-    .range([0, width]);
+//   const x = d3.scaleLinear()
+//     .domain([0, xMax])
+//     .nice()
+//     .range([0, width]);
 
-  const y = d3.scaleLinear()
-    .domain([0, 255])
+//   const y = d3.scaleLinear()
+//     .domain([0, 255])
+//     .nice()
+//     .range([height, 0]);
+
+//   g.append("g")
+//     .attr("transform", `translate(0,${height})`)
+//     .call(d3.axisBottom(x));
+
+//   g.append("g")
+//     .call(d3.axisLeft(y));
+
+//   g.append("text")
+//     .attr("class", "axis-label")
+//     .attr("x", width / 2)
+//     .attr("y", height + 48)
+//     .attr("text-anchor", "middle")
+//     .text(measureLabels[measure]);
+
+//   g.append("text")
+//     .attr("class", "axis-label")
+//     .attr("transform", "rotate(-90)")
+//     .attr("x", -height / 2)
+//     .attr("y", -52)
+//     .attr("text-anchor", "middle")
+//     .text("Cropland Density Proxy");
+
+//   g.selectAll("circle")
+//     .data(filtered)
+//     .join("circle")
+//     .attr("cx", d => x(d[measure]))
+//     .attr("cy", d => y(d.crop_density))
+//     .attr("r", 3)
+//     .attr("fill", d => colorScale(d.crop_zone))
+//     .attr("opacity", 0.45)
+//     .on("mouseover", function(event, d) {
+//       d3.select(this)
+//         .attr("r", 6)
+//         .attr("opacity", 0.9);
+
+//       tooltip
+//         .style("opacity", 1)
+//         .html(`
+//           <strong>${d.crop_zone}</strong><br>
+//           ${measureLabels[measure]}: ${d[measure].toFixed(2)}<br>
+//           Crop Density Proxy: ${d.crop_density.toFixed(2)}<br>
+//           Lon: ${d.lon.toFixed(2)}, Lat: ${d.lat.toFixed(2)}
+//         `);
+//     })
+//     .on("mousemove", function(event) {
+//       tooltip
+//         .style("left", `${event.pageX + 14}px`)
+//         .style("top", `${event.pageY - 28}px`);
+//     })
+//     .on("mouseout", function() {
+//       d3.select(this)
+//         .attr("r", 3)
+//         .attr("opacity", 0.45);
+
+//       tooltip.style("opacity", 0);
+//     });
+
+//   drawLegend(svg, outerWidth - 205, 28);
+// }
+
+function kernelDensityEstimator(kernel, X) {
+    return function(V) {
+        return X.map(function(x) {
+            return [x, d3.mean(V, function(v) {
+                return kernel(x - v);
+            })];
+        });
+    };
+}
+
+function kernelEpanechnikov(k) {
+    return function(v) {
+        return Math.abs(v /= k) <= 1
+            ? 0.75 * (1 - v * v) / k
+            : 0;
+    };
+}
+
+function drawViolinPlot() {
+    const data = getFilteredPoints();
+    if (!data.length) {
+      return;
+    }
+    const selectedMetric = currentMetric;
+
+    const cropZoneOrder = [
+      "Non-Agricultural",
+      "Sparse Crops",
+      "Intense Cropland"
+    ];
+
+    const groups = cropZoneOrder.filter(zone =>
+      data.some(d => d.crop_zone === zone)
+    );
+
+    d3.select("#violinplot")
+        .selectAll("*")
+        .remove();
+
+    const margin = { top: 40, right: 30, bottom: 80, left: 60 };
+
+    const width = 620 - margin.left - margin.right;
+    const height = 420 - margin.top - margin.bottom;
+
+    const svg = d3.select("#violinplot")
+        .append("svg")
+        .attr("width", width + margin.left + margin.right)
+        .attr("height", height + margin.top + margin.bottom)
+        .append("g")
+        .attr("transform",
+            `translate(${margin.left},${margin.top})`);
+    
+    const x = d3.scaleBand()
+    .range([0, width])
+    .domain(groups)
+    .padding(0.05);
+
+    svg.append("g")
+    .attr("transform", `translate(0,${height})`)
+    .call(d3.axisBottom(x))
+    .selectAll("text")
+    .attr("transform", "rotate(-30)")
+    .style("text-anchor", "end");
+
+    const values = data
+    .map(d => +d[selectedMetric])
+    .filter(v => !isNaN(v));
+
+    const y = d3.scaleLinear()
+    .domain(d3.extent(values))
     .nice()
     .range([height, 0]);
 
-  g.append("g")
-    .attr("transform", `translate(0,${height})`)
-    .call(d3.axisBottom(x));
-
-  g.append("g")
+    svg.append("g")
     .call(d3.axisLeft(y));
 
-  g.append("text")
-    .attr("class", "axis-label")
-    .attr("x", width / 2)
-    .attr("y", height + 48)
-    .attr("text-anchor", "middle")
-    .text(measureLabels[measure]);
-
-  g.append("text")
-    .attr("class", "axis-label")
+    svg.append("text")
+    .attr("class", "y-axis-title")
     .attr("transform", "rotate(-90)")
     .attr("x", -height / 2)
-    .attr("y", -52)
+    .attr("y", -48)
     .attr("text-anchor", "middle")
-    .text("Cropland Density Proxy");
+    .text(`${measureLabels[selectedMetric]}`);
 
-  g.selectAll("circle")
-    .data(filtered)
-    .join("circle")
-    .attr("cx", d => x(d[measure]))
-    .attr("cy", d => y(d.crop_density))
-    .attr("r", 3)
-    .attr("fill", d => colorScale(d.crop_zone))
-    .attr("opacity", 0.45)
-    .on("mouseover", function(event, d) {
-      d3.select(this)
-        .attr("r", 6)
-        .attr("opacity", 0.9);
+    const kde = kernelDensityEstimator(
+    kernelEpanechnikov(12),
+    y.ticks(50)
+    );
 
-      tooltip
-        .style("opacity", 1)
-        .html(`
-          <strong>${d.crop_zone}</strong><br>
-          ${measureLabels[measure]}: ${d[measure].toFixed(2)}<br>
-          Crop Density Proxy: ${d.crop_density.toFixed(2)}<br>
-          Lon: ${d.lon.toFixed(2)}, Lat: ${d.lat.toFixed(2)}
-        `);
-    })
-    .on("mousemove", function(event) {
-      tooltip
-        .style("left", `${event.pageX + 14}px`)
-        .style("top", `${event.pageY - 28}px`);
-    })
-    .on("mouseout", function() {
-      d3.select(this)
-        .attr("r", 3)
-        .attr("opacity", 0.45);
+    const groupedData = groups.map(group => [
+      group,
+      data.filter(d => d.crop_zone === group)
+    ]);
 
-      tooltip.style("opacity", 0);
+    const densityData = groupedData.map(([key, values]) => {
+
+        const input = values
+        .map(d => +d[selectedMetric])
+        .filter(v => !isNaN(v));
+
+        const density = kde(input);
+
+        const sorted = input.sort(d3.ascending);
+
+        const q1 = d3.quantile(sorted, 0.25);
+        const median = d3.quantile(sorted, 0.5);
+        const q3 = d3.quantile(sorted, 0.75);
+
+        return {
+            key: key,
+            density: density,
+            raw: values,
+
+            min: d3.min(sorted),
+            max: d3.max(sorted),
+
+            q1: q1,
+            median: median,
+            q3: q3,
+
+            iqr: q3 - q1
+        };
     });
 
-  drawLegend(svg, outerWidth - 205, 28);
+    const maxDensity = d3.max(densityData, d =>
+    d3.max(d.density, v => v[1])
+    );
+
+    const xNum = d3.scaleLinear()
+    .range([0, x.bandwidth() / 2])
+    .domain([0, maxDensity]);
+
+    svg.selectAll(".violin")
+    .data(densityData)
+    .join("path")
+    .attr("class", "violin")
+    .attr("transform", d =>
+        `translate(${x(d.key) + x.bandwidth()/2},0)`
+    )
+    .style("fill", d => colorScale(d.key))
+    .style("stroke", "black")
+    .style("opacity", 0.8)
+    .attr("d", d =>
+        d3.area()
+          .x0(v => -xNum(v[1]))
+          .x1(v => xNum(v[1]))
+          .y(v => y(v[0]))
+          .curve(d3.curveCatmullRom)
+          (d.density)
+    )
+    .on("mouseover", function(event, d) {
+
+    d3.select(this)
+      .style("opacity", 1)
+      .style("stroke-width", 2);
+
+    tooltip
+      .style("opacity", 1)
+      .html(`
+        <strong>${d.key}</strong><br>
+
+        <strong>${measureLabels[selectedMetric]}</strong><br><br>
+
+        Median: ${d.median.toFixed(2)}<br>
+        IQR: ${d.iqr.toFixed(2)}<br>
+        Minimum: ${d.min.toFixed(2)}<br>
+        Maximum: ${d.max.toFixed(2)}
+      `);
+    })
+
+    .on("mousemove", function(event) {
+
+        tooltip
+          .style("left", `${event.pageX + 14}px`)
+          .style("top", `${event.pageY - 28}px`);
+    })
+
+    .on("mouseout", function() {
+
+        d3.select(this)
+          .style("opacity", 0.8)
+          .style("stroke-width", 1);
+
+        tooltip.style("opacity", 0);
+    });
+
+    // svg.selectAll(".points")
+    // .data(data)
+    // .join("circle")
+    // .attr("cx", d =>
+    //     x(d.crop_zone)
+    //     + x.bandwidth()/2
+    //     + (Math.random() - 0.5) * 20
+    // )
+    // .attr("cy", d => y(+d[selectedMetric]))
+    // .attr("r", 2)
+    // .style("fill", "black")
+    // .style("opacity", 0.3)
+
+    // .on("mouseover", function(event, d) {
+    //   d3.select(this)
+    //     .style("fill", "orange");
+
+    //   tooltip
+    //     .style("opacity", 1)
+    //     .html(`
+    //       <strong>${d.crop_zone}</strong><br>
+    //       ${measureLabels[selectedMetric]}: ${d[selectedMetric].toFixed(2)}<br>
+    //       Crop Density Proxy: ${d.crop_density.toFixed(2)}<br>
+    //       Lon: ${d.lon.toFixed(2)}, Lat: ${d.lat.toFixed(2)}
+    //     `);
+    // })
+    // .on("mousemove", function(event) {
+    //   tooltip
+    //     .style("left", `${event.pageX + 14}px`)
+    //     .style("top", `${event.pageY - 28}px`);
+    // })
+    // .on("mouseout", function(event, d) {
+
+    // d3.select(this)
+    //     .style("fill", "black");
+
+    // });
+
+  drawLegend(svg, width - 30, -10);
+
+
 }
+
 
 function drawLegend(svg, x, y) {
   const zones = ["Non-Agricultural", "Sparse Crops", "Intense Cropland"];
