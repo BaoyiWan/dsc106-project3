@@ -40,8 +40,11 @@
   <p>
     The visualization shows intense cropland areas have a higher average
     precipitation proxy than sparse cropland and non-agricultural areas. However,
-    the scatterplot also shows a weak and noisy relationship at the pixel level,
-    so precipitation alone does not explain cropland density.
+    the violin plot does not show much difference of distribution of overall 
+    precipitation, rain or snow proxy for Non-Agricultural, Sparse Crops, Intense Cropland in main data except for distribution of outliers.
+    (Although for the overall precipitation and snow proxy, there are more data clustered at the 
+    top y axis and clustered at both top and bottom y axis in rain proxy for intense cropland.)
+    So precipitation alone does not explain cropland density.
   </p>
 </section>
 
@@ -70,10 +73,11 @@
       <div class="chart-card">
         <h2>Pixel-Level Relationship</h2>
         <p class="chart-note">
-          Each point represents a sampled pixel from the map layers. Use the controls to
+          Each violin plot for the three cropland categories represents
+          the distribution of main datapoints as well as the outliers. Use the controls to
           compare different precipitation proxies and crop zones.
         </p>
-        <div id="scatterplot"></div>
+        <div id="violinplot"></div>
       </div>
 
       <div class="chart-card">
@@ -93,8 +97,8 @@
         <div>
           <h3>Research Question</h3>
           <p>
-            Our project asks: how do precipitation patterns overlap with cropland density
-            across the United States? Instead of trying to prove that precipitation causes
+            Our project asks: What is the spatial relationship between precipitation intensity and cropland density across the United States?
+            Instead of trying to prove that precipitation causes
             more crops to grow, we focus on the spatial relationship between cropland
             distribution and precipitation intensity.
           </p>
@@ -116,8 +120,8 @@
         <div>
           <h3>Visual Encoding</h3>
           <p>
-            The scatterplot uses the x-axis to represent the selected precipitation proxy
-            and the y-axis to represent cropland density. Color represents the crop-zone
+            The violin plot uses the y-axis to represent overall precipitation, rain or snow proxy for Non-Agricultural, 
+            Sparse Crops and Intense Cropland. Color represents the crop-zone
             category: non-agricultural, sparse crops, or intense cropland. The bar chart
             summarizes the average selected precipitation proxy for each crop-zone group,
             making the group-level pattern easier to compare.
@@ -138,7 +142,7 @@
           <h3>Development Process</h3>
           <p>
             Our group first explored the data in Python by creating several static graphs,
-            including an overlay map, scatterplots, and grouped bar charts. After choosing
+            including an overlay map, violin plot, and grouped bar charts. After choosing
             the final research question, we exported cleaned and sampled data into CSV
             files and rebuilt the visualization in D3. The most time-consuming part was
             transforming image-based map layers into a format that could be used for an
