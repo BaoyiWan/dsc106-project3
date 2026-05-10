@@ -211,6 +211,12 @@ svg {
   overflow: visible;
 }
 
+.y-axis-title {
+  font-size: 13px;
+  fill: #222;
+  font-weight: 800;
+}
+
 .axis-label {
   font-size: 13px;
   fill: #222;
@@ -227,6 +233,15 @@ svg {
   font-size: 12px;
   font-weight: 800;
   fill: #111;
+}
+
+.violin {
+    transition: all 0.25s ease;
+    cursor: pointer;
+}
+
+.violin:hover {
+    filter: brightness(1.08);
 }
 
 /* ---------- Tooltip ---------- */
